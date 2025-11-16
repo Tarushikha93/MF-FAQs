@@ -40,6 +40,23 @@ body {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.logo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 10px;
+}
+
+.logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    padding: 5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .header h1 {
     font-size: 2em;
     margin-bottom: 10px;
@@ -354,8 +371,19 @@ body {
         border-radius: 0;
     }
     
+    .logo-container {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .logo {
+        width: 35px;
+        height: 35px;
+    }
+    
     .header h1 {
         font-size: 1.5em;
+        margin-bottom: 0;
     }
     
     .message-content {
