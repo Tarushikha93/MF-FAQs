@@ -26,6 +26,13 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
+# Try to import Google Gemini, but make it optional
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+
 
 class MutualFundChatbot:
     """Chatbot for answering mutual fund questions with source citations."""
@@ -33,17 +40,26 @@ class MutualFundChatbot:
     def __init__(self):
         self.knowledge_base = MutualFundKnowledgeBase()
         self.scraper = MutualFundScraper()
-        self.client = None
+        self.openai_client = None
+        self.gemini_model = None
         self.allowed_sources = set()  # Track allowed source URLs
         
         # Initialize repository and data manager
         self.repository = FundRepository()
         self.data_manager = FundDataManager()
         
+        # Initialize OpenAI if available
         if OPENAI_AVAILABLE:
             api_key = os.getenv('OPENAI_API_KEY')
             if api_key:
-                self.client = OpenAI(api_key=api_key)
+                self.openai_client = OpenAI(api_key=api_key)
+        
+        # Initialize Gemini if available
+        if GEMINI_AVAILABLE:
+            api_key = os.getenv('GEMINI_API_KEY')
+            if api_key:
+                genai.configure(api_key=api_key)
+                self.gemini_model = genai.GenerativeModel('models/gemini-2.5-flash')
         
         # Load data from JSON file
         self._load_fund_data()
@@ -173,9 +189,24 @@ Instructions:
 
 Answer:"""
         
-        if self.client:
+        # Try Gemini first (if available), then OpenAI, then fallback to template
+        if self.gemini_model:
             try:
-                response = self.client.chat.completions.create(
+                response = self.gemini_model.generate_content(
+                    prompt,
+                    generation_config={
+                        'temperature': 0.3,
+                        'max_output_tokens': 200,
+                    }
+                )
+                answer = response.text.strip()
+                return answer
+            except Exception as e:
+                print(f"Gemini error: {e}, trying OpenAI...")
+        
+        if self.openai_client:
+            try:
+                response = self.openai_client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a factual information assistant. You provide only factual information about mutual funds with no investment advice."},
@@ -187,7 +218,7 @@ Answer:"""
                 answer = response.choices[0].message.content.strip()
                 return answer
             except Exception as e:
-                print(f"LLM error: {e}, using template")
+                print(f"OpenAI error: {e}, using template")
         
         # Fallback to template-based answer
         return self.generate_template_answer(query, context, source_url)
@@ -226,8 +257,52 @@ Answer:"""
         # Return topic-specific official source
         return self.knowledge_base.get_official_source_url(topic)
     
+    def contains_personal_info(self, query: str) -> bool:
+        """Check if query contains personal information like PAN, Aadhaar, account numbers, OTP, email, phone."""
+        query_lower = query.lower()
+        
+        # Check for explicit mentions of personal information types
+        personal_info_keywords = [
+            'pan card', 'pan number', 'pan no',
+            'aadhaar', 'aadhar', 'uidai',
+            'account number', 'account no', 'acc no', 'account num',
+            'otp', 'one time password', 'verification code',
+            'phone number', 'mobile number', 'contact number', 'phone no', 'mobile no',
+            '@',  # Email indicator
+        ]
+        
+        # Check for keywords first
+        for keyword in personal_info_keywords:
+            if keyword in query_lower:
+                return True
+        
+        # Patterns for specific formats (more strict to avoid false positives)
+        personal_info_patterns = [
+            r'\b[A-Z]{5}\d{4}[A-Z]{1}\b',  # PAN card format: ABCDE1234F (uppercase)
+            r'\b[a-z]{5}\d{4}[a-z]{1}\b',  # PAN card format: abcde1234f (lowercase)
+            r'\b\d{4}\s?\d{4}\s?\d{4}\b',  # Aadhaar (12 digits with optional spaces)
+            r'\b\d{12}\b',  # Aadhaar (12 consecutive digits) - but be careful of false positives
+            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email addresses
+            r'\b\+91\s?\d{10}\b',  # Indian phone number with country code
+            r'\b\d{10}\s+(?:phone|mobile|contact)',  # 10 digits followed by phone/mobile/contact
+        ]
+        
+        for pattern in personal_info_patterns:
+            if re.search(pattern, query, re.IGNORECASE):
+                return True
+        
+        return False
+    
     def answer_question(self, query: str) -> Dict[str, str]:
         """Answer a question about mutual funds. Only uses data from allowed sources."""
+        # Check for personal information first
+        if self.contains_personal_info(query):
+            return {
+                'answer': "I'm sorry, but I cannot and will not accept, process, or store any personal information such as PAN card numbers, Aadhaar numbers, account numbers, OTPs, email addresses, or phone numbers. For security reasons, please do not share such information. If you need assistance with account-related matters, please contact your AMC (Asset Management Company) directly through their official channels.",
+                'source_url': None,
+                'topic': 'personal_info_declined'
+            }
+        
         # Identify topic
         topic = self.identify_topic(query)
         
@@ -273,10 +348,10 @@ Answer:"""
         # Check if we have information from allowed sources
         source_url = info.get('source_url')
         
-        # If no info found or source not in allowed sources, return "I don't know"
+        # If no info found or source not in allowed sources, return out-of-context message
         if not info.get('value'):
             return {
-                'answer': "I don't know.",
+                'answer': "I'm sorry I cannot answer this question of yours. Kindly visit the official website https://v.hdfcbank.com/htdocs/common/focus-funds/LP.html",
                 'source_url': None,
                 'topic': topic
             }
@@ -306,10 +381,10 @@ Answer:"""
                                 info['amc'] = fund.amc_name
                                 break
             
-            # If still no valid source, return "I don't know"
+            # If still no valid source, return out-of-context message
             if not source_url or source_url not in self.allowed_sources:
                 return {
-                    'answer': "I don't know.",
+                    'answer': "I'm sorry I cannot answer this question of yours. Kindly visit the official website https://v.hdfcbank.com/htdocs/common/focus-funds/LP.html",
                     'source_url': None,
                     'topic': topic
                 }
@@ -323,13 +398,13 @@ Answer:"""
                     source_url = funds[0].source_url
                 else:
                     return {
-                        'answer': "I don't know.",
+                        'answer': "I'm sorry I cannot answer this question of yours. Kindly visit the official website https://v.hdfcbank.com/htdocs/common/focus-funds/LP.html",
                         'source_url': None,
                         'topic': topic
                     }
             else:
                 return {
-                    'answer': "I don't know.",
+                    'answer': "I'm sorry I cannot answer this question of yours. Kindly visit the official website https://v.hdfcbank.com/htdocs/common/focus-funds/LP.html",
                     'source_url': None,
                     'topic': topic
                 }

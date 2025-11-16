@@ -171,8 +171,32 @@ async function sendMessage() {
     }
 }
 
+// Load and display last refreshed timestamp
+async function loadLastRefreshed() {
+    try {
+        const response = await fetch('/api/last-refreshed');
+        const data = await response.json();
+        
+        const refreshText = document.getElementById('refreshText');
+        
+        if (data.last_refreshed) {
+            refreshText.textContent = `Data last refreshed: ${data.last_refreshed}`;
+            refreshText.style.color = '#28a745';
+        } else {
+            refreshText.textContent = 'Data has not been refreshed yet';
+            refreshText.style.color = '#6c757d';
+        }
+    } catch (error) {
+        console.error('Error fetching last refreshed timestamp:', error);
+        const refreshText = document.getElementById('refreshText');
+        refreshText.textContent = 'Unable to load refresh timestamp';
+        refreshText.style.color = '#dc3545';
+    }
+}
+
 // Focus input on load
 window.addEventListener('load', () => {
     userInput.focus();
+    loadLastRefreshed();
 });
 

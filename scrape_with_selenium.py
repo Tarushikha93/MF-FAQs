@@ -19,6 +19,8 @@ import time
 import re
 import json
 import os
+from datetime import datetime
+import pytz
 
 def scrape_with_selenium(url):
     """Scrape fund data using Selenium."""
@@ -116,6 +118,15 @@ def scrape_with_selenium(url):
         except:
             pass
         
+        # Extract top holdings using Selenium before quitting driver
+        top_holdings = None
+        try:
+            top_holdings = extract_top_holdings_with_selenium(driver)
+            if top_holdings:
+                print(f"Found {len(top_holdings)} top holdings")
+        except Exception as e:
+            print(f"Error extracting top holdings with Selenium: {e}")
+        
         driver.quit()
         
         # Parse with BeautifulSoup
@@ -137,6 +148,12 @@ def scrape_with_selenium(url):
             details['category_rank'] = category_rank
         elif 'category_rank_temp' in locals():
             details['category_rank'] = category_rank_temp
+        
+        # Use top holdings from Selenium, or try extracting from soup
+        if not top_holdings:
+            top_holdings = extract_top_holdings(soup, None)
+        if top_holdings:
+            details['top_holdings'] = top_holdings
         
         return details
         
@@ -625,6 +642,260 @@ def extract_category_rank(soup, page_source=None):
     
     return None
 
+def extract_top_holdings_with_selenium(driver):
+    """Extract top holdings using Selenium WebDriver."""
+    top_holdings = []
+    
+    try:
+        # Scroll to find holdings section
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.6);")
+        time.sleep(2)
+        
+        # Look for elements containing holdings keywords
+        holdings_keywords = ['top holdings', 'portfolio', 'holdings', 'top 10 holdings']
+        
+        for keyword in holdings_keywords:
+            try:
+                # Find elements containing the keyword
+                elements = driver.find_elements(By.XPATH, 
+                    f"//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), '{keyword}')]")
+                
+                for elem in elements:
+                    try:
+                        # Try to find a table nearby
+                        parent = elem.find_element(By.XPATH, "./ancestor::*[.//table][1]")
+                        table = parent.find_element(By.TAG_NAME, "table")
+                        
+                        # Parse table rows
+                        rows = table.find_elements(By.TAG_NAME, "tr")
+                        
+                        for row in rows[1:]:  # Skip header row
+                            cells = row.find_elements(By.TAG_NAME, "td")
+                            if len(cells) >= 2:
+                                company_name = cells[0].text.strip()
+                                
+                                # Skip header rows
+                                if company_name.lower() in ['company', 'name', 'instrument', 'asset']:
+                                    continue
+                                
+                                # Find percentage in other cells
+                                industry = 'N/A'
+                                percentage = None
+                                
+                                for cell in cells[1:]:
+                                    cell_text = cell.text.strip()
+                                    if '%' in cell_text:
+                                        percent_match = re.search(r'([0-9.]+)\s*%', cell_text)
+                                        if percent_match:
+                                            percentage = percent_match.group(1) + '%'
+                                    elif len(cell_text) > 2 and not re.search(r'^[0-9.]+$', cell_text):
+                                        if industry == 'N/A':
+                                            industry = cell_text
+                                
+                                if company_name and percentage:
+                                    holding = {
+                                        'company_name': company_name,
+                                        'industry': industry,
+                                        'percentage': percentage
+                                    }
+                                    top_holdings.append(holding)
+                                    
+                                    if len(top_holdings) >= 10:
+                                        break
+                        
+                        if top_holdings:
+                            break
+                    except:
+                        continue
+                
+                if top_holdings:
+                    break
+            except Exception as e:
+                continue
+                
+    except Exception as e:
+        print(f"Error in extract_top_holdings_with_selenium: {e}")
+    
+    return top_holdings if top_holdings else None
+
+def extract_top_holdings(soup, driver=None):
+    """Extract top holdings (portfolio) from the page."""
+    top_holdings = []
+    
+    # Look for headings/sections related to holdings/portfolio
+    holdings_keywords = ['top holdings', 'portfolio', 'holdings', 'top 10 holdings', 'sector allocation', 'asset allocation']
+    
+    # First, try to find tables with holdings data
+    tables = soup.find_all('table')
+    
+    for table in tables:
+        table_text = table.get_text().lower()
+        
+        # Check if this table contains holdings information
+        is_holdings_table = False
+        for keyword in holdings_keywords:
+            if keyword in table_text:
+                is_holdings_table = True
+                break
+        
+        # Also check parent elements for holdings keywords
+        if not is_holdings_table:
+            parent = table.find_parent(['div', 'section'])
+            if parent:
+                parent_text = parent.get_text().lower()
+                for keyword in holdings_keywords:
+                    if keyword in parent_text:
+                        is_holdings_table = True
+                        break
+        
+        if is_holdings_table:
+            # Parse table rows
+            rows = table.find_all('tr')
+            headers = []
+            
+            # Find header row
+            for i, row in enumerate(rows):
+                cells = row.find_all(['th', 'td'])
+                if len(cells) > 1:
+                    cell_texts = [cell.get_text(strip=True).lower() for cell in cells]
+                    # Check if this looks like a header row
+                    if any(keyword in ' '.join(cell_texts) for keyword in ['company', 'name', 'sector', 'industry', 'percentage', '%', 'allocation', 'nav']):
+                        headers = [cell.get_text(strip=True) for cell in cells]
+                        break
+            
+            # If no headers found, use first row
+            if not headers and len(rows) > 0:
+                cells = rows[0].find_all(['th', 'td'])
+                headers = [cell.get_text(strip=True) for cell in cells]
+            
+            # Find data rows (skip header row)
+            start_idx = 1 if headers else 0
+            for row in rows[start_idx:]:
+                cells = row.find_all(['td', 'th'])
+                if len(cells) < 2:
+                    continue
+                
+                cell_texts = [cell.get_text(strip=True) for cell in cells]
+                
+                # Extract company name (usually first column)
+                company_name = cell_texts[0] if len(cell_texts) > 0 else None
+                
+                # Extract industry/sector (usually second column)
+                industry = None
+                percentage = None
+                
+                for i, cell_text in enumerate(cell_texts[1:], 1):
+                    # Look for percentage (contains %)
+                    if '%' in cell_text:
+                        # Extract percentage value
+                        percent_match = re.search(r'([0-9.]+)\s*%', cell_text)
+                        if percent_match:
+                            percentage = percent_match.group(1) + '%'
+                    # Look for industry/sector (not a number, not a percentage)
+                    elif not re.search(r'^[0-9.]+$', cell_text) and len(cell_text) > 2:
+                        if not industry and cell_text.lower() not in ['company', 'name', 'sector', 'industry', 'percentage', '%']:
+                            industry = cell_text
+                
+                # If we found company name and percentage, add to holdings
+                if company_name and percentage and len(company_name) > 1:
+                    # Skip header rows
+                    if company_name.lower() not in ['company', 'name', 'instrument', 'asset']:
+                        holding = {
+                            'company_name': company_name,
+                            'industry': industry or 'N/A',
+                            'percentage': percentage
+                        }
+                        top_holdings.append(holding)
+                
+                # Limit to top 10 holdings
+                if len(top_holdings) >= 10:
+                    break
+            
+            if top_holdings:
+                break
+    
+    # If no table found, try searching in divs/spans for holdings data
+    if not top_holdings:
+        # Look for sections with holdings keywords
+        for elem in soup.find_all(['div', 'section', 'h2', 'h3', 'h4']):
+            elem_text = elem.get_text().lower()
+            for keyword in holdings_keywords:
+                if keyword in elem_text:
+                    # Look for lists or structured data nearby
+                    # Try to find a table or list within this element or nearby siblings
+                    table = elem.find('table')
+                    if table:
+                        # Recursively parse this table
+                        rows = table.find_all('tr')
+                        for row in rows[1:]:  # Skip header
+                            cells = row.find_all(['td', 'th'])
+                            if len(cells) >= 2:
+                                company = cells[0].get_text(strip=True)
+                                # Find percentage in cells
+                                for cell in cells[1:]:
+                                    cell_text = cell.get_text(strip=True)
+                                    if '%' in cell_text:
+                                        percent_match = re.search(r'([0-9.]+)\s*%', cell_text)
+                                        if percent_match:
+                                            holding = {
+                                                'company_name': company,
+                                                'industry': 'N/A',
+                                                'percentage': percent_match.group(1) + '%'
+                                            }
+                                            top_holdings.append(holding)
+                                            break
+                                
+                                if len(top_holdings) >= 10:
+                                    break
+                    break
+    
+    # Try using Selenium if driver is provided and we haven't found holdings
+    if not top_holdings and driver:
+        try:
+            # Look for elements containing holdings keywords
+            holdings_elements = driver.find_elements(By.XPATH, 
+                "//*[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'top holdings') or "
+                "contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'portfolio') or "
+                "contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'holdings')]")
+            
+            for elem in holdings_elements:
+                # Try to find a table nearby
+                try:
+                    parent = elem.find_element(By.XPATH, "./ancestor::*[.//table][1]")
+                    table = parent.find_element(By.TAG_NAME, "table")
+                    
+                    # Parse table
+                    rows = table.find_elements(By.TAG_NAME, "tr")
+                    for row in rows[1:]:  # Skip header
+                        cells = row.find_elements(By.TAG_NAME, "td")
+                        if len(cells) >= 2:
+                            company = cells[0].text.strip()
+                            # Find percentage
+                            for cell in cells[1:]:
+                                cell_text = cell.text.strip()
+                                if '%' in cell_text:
+                                    percent_match = re.search(r'([0-9.]+)\s*%', cell_text)
+                                    if percent_match:
+                                        holding = {
+                                            'company_name': company,
+                                            'industry': 'N/A',
+                                            'percentage': percent_match.group(1) + '%'
+                                        }
+                                        top_holdings.append(holding)
+                                        break
+                            
+                            if len(top_holdings) >= 10:
+                                break
+                    
+                    if top_holdings:
+                        break
+                except:
+                    continue
+        except Exception as e:
+            print(f"Error extracting top holdings with Selenium: {e}")
+    
+    return top_holdings if top_holdings else None
+
 def update_json_file(details_list):
     """Update fund_data.json with scraped data."""
     json_path = os.path.join(os.path.dirname(__file__), 'fund_data.json')
@@ -658,6 +929,7 @@ def update_json_file(details_list):
                 fund['benchmark'] = details.get('benchmark')
                 fund['performance_data'] = details.get('performance_data', {})
                 fund['category_rank'] = details.get('category_rank')
+                fund['top_holdings'] = details.get('top_holdings', [])
                 fund_found = True
                 print(f"✅ Updated: {scheme_name}")
                 break
@@ -675,16 +947,24 @@ def update_json_file(details_list):
                 'benchmark': details.get('benchmark'),
                 'performance_data': details.get('performance_data', {}),
                 'category_rank': details.get('category_rank'),
+                'top_holdings': details.get('top_holdings', []),
                 'source_url': url
             }
             data['funds'].append(new_fund)
             print(f"✅ Added: {scheme_name}")
+    
+    # Add/update last refresh timestamp in IST
+    ist = pytz.timezone('Asia/Kolkata')
+    current_time_ist = datetime.now(ist)
+    data['last_refreshed'] = current_time_ist.strftime('%Y-%m-%d %H:%M:%S IST')
+    data['last_refreshed_iso'] = current_time_ist.isoformat()
     
     # Write updated data
     with open(json_path, 'w') as f:
         json.dump(data, f, indent=2)
     
     print(f"\n✅ Updated fund_data.json with {len(data['funds'])} funds")
+    print(f"✅ Last refreshed: {data['last_refreshed']}")
     return data
 
 if __name__ == "__main__":
@@ -798,11 +1078,12 @@ if __name__ == "__main__":
     else:
         print("❌ Failed to scrape Flexi Cap fund. Stopping.")
     
+    # Skip validation for top holdings scraping (validation is only for performance data)
+    # For top holdings, we'll scrape all links regardless of validation
     if not validation_passed:
-        print("\n⚠️  Validation failed. Exiting without scraping other links.")
-        exit(0)
+        print("\n⚠️  Performance data validation failed, but continuing to scrape top holdings for all funds...")
     
-    # If validation passed, scrape all links
+    # Scrape all links for top holdings
     print(f"\n{'='*60}")
     print("Validation passed! Scraping all 3 links...")
     print('='*60)

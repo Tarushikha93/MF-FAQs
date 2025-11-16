@@ -5,7 +5,7 @@ Follows repository pattern for data management.
 
 import json
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from enum import Enum
@@ -65,6 +65,7 @@ class Fund:
     source_url: Optional[str] = None
     performance: Optional[PerformanceData] = None
     ranks: Optional[FundRank] = None
+    top_holdings: Optional[List[Dict[str, str]]] = None  # List of holdings with company name, industry, percentage
     last_updated: Optional[str] = None
     
     def __post_init__(self):
