@@ -1,0 +1,59 @@
+"""
+Flask backend API for the Mutual Fund Chatbot.
+"""
+
+from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
+from chatbot import MutualFundChatbot
+import os
+
+app = Flask(__name__, static_folder='static', static_url_path='')
+CORS(app)  # Enable CORS for frontend
+
+# Initialize chatbot
+chatbot = MutualFundChatbot()
+
+@app.route('/')
+def index():
+    """Serve the main HTML page."""
+    return send_from_directory('static', 'index.html')
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """Handle chat requests."""
+    try:
+        data = request.get_json()
+        query = data.get('query', '').strip()
+        
+        if not query:
+            return jsonify({
+                'answer': "Please provide a question.",
+                'source_url': None,
+                'error': None
+            }), 400
+        
+        # Get answer from chatbot
+        response = chatbot.answer_question(query)
+        
+        return jsonify({
+            'answer': response['answer'],
+            'source_url': response.get('source_url'),
+            'error': None
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'answer': None,
+            'source_url': None,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/health', methods=['GET'])
+def health():
+    """Health check endpoint."""
+    return jsonify({'status': 'ok'}), 200
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
+

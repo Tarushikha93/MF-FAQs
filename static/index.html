@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutual Fund Information Chatbot</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 Mutual Fund Information Chatbot</h1>
+            <p class="subtitle">Ask questions about expense ratio, exit load, SIP, lock-in, riskometer, benchmark, and statements</p>
+        </div>
+        
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot-message">
+                    <div class="message-content">
+                        <p>Hello! I can help you with information about mutual funds. Ask me about expense ratio, exit load, minimum SIP, lock-in period, riskometer, benchmark, or how to download statements.</p>
+                        <p class="disclaimer">Note: I provide factual information only, not investment advice.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chat-input-container">
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    placeholder="Type your question here..." 
+                    autocomplete="off"
+                >
+                <button id="sendButton" onclick="sendMessage()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/script.js"></script>
+</body>
+</html>
+
