@@ -3,43 +3,82 @@
     {
       "scheme_name": "HDFC Large and Mid Cap Fund",
       "amc_name": "HDFC",
+      "category": "Large & Mid Cap",
       "expense_ratio": "0.85%",
       "exit_load": "1.0%",
-      "minimum_sip": "\u20b9100",
+      "minimum_sip": "₹100",
       "lock_in": "No Lock-in",
       "riskometer": "Very High Risk",
       "benchmark": "and category average",
       "source_url": "https://www.indmoney.com/mutual-funds/hdfc-large-and-mid-cap-fund-direct-growth-2874",
-      "performance_data": {},
-      "category_rank": "4/215"
+      "last_updated": "2025-11-16T16:07:32.067696",
+      "category_rank": {
+        "rank_1m": null,
+        "rank_3m": null,
+        "rank_6m": null,
+        "rank_1y": null,
+        "rank_3y": null,
+        "rank_5y": null,
+        "overall_category_rank": "4/215"
+      }
     },
     {
       "scheme_name": "HDFC Flexi Cap Fund",
       "amc_name": "HDFC",
+      "category": "Flexi Cap",
       "expense_ratio": "0.7%",
       "exit_load": "1.0%",
-      "minimum_sip": "\u20b9100",
+      "minimum_sip": "₹100",
       "lock_in": "No Lock-in",
       "riskometer": "Very High Risk",
       "benchmark": "and category average",
       "source_url": "https://www.indmoney.com/mutual-funds/hdfc-flexi-cap-fund-direct-plan-growth-option-3184",
-      "performance_data": {},
-      "category_rank": "1/221"
+      "last_updated": "2025-11-16T16:07:32.069762",
+      "category_rank": {
+        "rank_1m": null,
+        "rank_3m": null,
+        "rank_6m": null,
+        "rank_1y": null,
+        "rank_3y": null,
+        "rank_5y": null,
+        "overall_category_rank": "1/221"
+      }
     },
     {
       "scheme_name": "HDFC ELSS TaxSaver",
       "amc_name": "HDFC",
+      "category": "ELSS (Tax Savings)",
       "expense_ratio": "1.08%",
       "exit_load": "0%",
-      "minimum_sip": "\u20b9500",
+      "minimum_sip": "₹500",
       "lock_in": "3 years",
       "riskometer": "Very High Risk",
       "benchmark": "and category average",
       "source_url": "https://www.indmoney.com/mutual-funds/hdfc-elss-taxsaver-direct-plan-growth-option-2685",
+      "last_updated": "2025-11-16T16:07:32.070394",
       "performance_data": {
-        "fund_1y": "13.16%"
+        "fund_1m": null,
+        "fund_3m": null,
+        "fund_6m": null,
+        "fund_1y": "13.16%",
+        "fund_3y": null,
+        "fund_5y": null,
+        "benchmark_1m": null,
+        "benchmark_3m": null,
+        "benchmark_6m": null,
+        "benchmark_1y": null,
+        "benchmark_3y": null,
+        "benchmark_5y": null
       },
-      "category_rank": "2/233"
+      "category_rank": {
+        "rank_1m": null,
+        "rank_3m": null,
+        "rank_6m": null,
+        "rank_1y": null,
+        "rank_3y": null,
+        "rank_5y": null,
+        "overall_category_rank": "2/233"
+      }
     }
   ]
 }

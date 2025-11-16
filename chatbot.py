@@ -8,6 +8,8 @@ import json
 from typing import Dict, List, Optional
 from knowledge_base import MutualFundKnowledgeBase, FundInfo
 from mutual_fund_scraper import MutualFundScraper
+from fund_repository import FundRepository
+from data_manager import FundDataManager
 import re
 
 # Try to import dotenv, but make it optional
@@ -33,6 +35,10 @@ class MutualFundChatbot:
         self.scraper = MutualFundScraper()
         self.client = None
         self.allowed_sources = set()  # Track allowed source URLs
+        
+        # Initialize repository and data manager
+        self.repository = FundRepository()
+        self.data_manager = FundDataManager()
         
         if OPENAI_AVAILABLE:
             api_key = os.getenv('OPENAI_API_KEY')
@@ -116,6 +122,12 @@ class MutualFundChatbot:
     def identify_topic(self, query: str) -> str:
         """Identify the topic of the query."""
         query_lower = query.lower()
+        
+        # Check for fund listing/rank queries first
+        if any(keyword in query_lower for keyword in ['what fund', 'list fund', 'fund information', 'which fund', 'funds do you have', 'tell me about fund']):
+            if 'rank' in query_lower:
+                return 'fund_list_with_ranks'
+            return 'fund_list'
         
         topics = {
             'expense ratio': ['expense ratio', 'expense', 'ter', 'total expense ratio'],
@@ -218,6 +230,10 @@ Answer:"""
         """Answer a question about mutual funds. Only uses data from allowed sources."""
         # Identify topic
         topic = self.identify_topic(query)
+        
+        # Handle fund listing queries
+        if topic == 'fund_list' or topic == 'fund_list_with_ranks':
+            return self._answer_fund_list_query(query, topic)
         
         # Extract fund name if present
         fund_name = self.extract_fund_name(query)
@@ -337,20 +353,74 @@ Answer:"""
             'topic': topic
         }
     
+    def _answer_fund_list_query(self, query: str, topic: str) -> Dict[str, str]:
+        """Answer queries about listing funds and their ranks."""
+        # Get fund information from repository
+        funds_info = self.data_manager.get_funds_info_with_ranks()
+        
+        if topic == 'fund_list_with_ranks':
+            # Detailed answer with ranks
+            answer_parts = []
+            answer_parts.append(f"We have information about {funds_info['summary']['total_funds']} mutual fund(s):\n")
+            
+            for fund in funds_info['summary']['funds']:
+                answer_parts.append(f"• {fund['scheme_name']} ({fund['amc_name']})")
+                if fund.get('category'):
+                    answer_parts.append(f"  Category: {fund['category']}")
+                answer_parts.append(f"  Rank: {fund['rank']}")
+                answer_parts.append("")
+            
+            answer = "\n".join(answer_parts)
+        else:
+            # Simple listing
+            answer_parts = []
+            answer_parts.append(f"We have information about {funds_info['summary']['total_funds']} mutual fund(s):\n")
+            
+            for fund in funds_info['summary']['funds']:
+                answer_parts.append(f"• {fund['scheme_name']} ({fund['amc_name']})")
+            
+            answer = "\n".join(answer_parts)
+        
+        answer += "\n\nNote: This information is based on data from official sources. Please verify details from scheme documents."
+        
+        # Get source URL (use first fund's source or AMFI)
+        source_url = None
+        if funds_info['detailed'] and funds_info['detailed'][0].get('source_url'):
+            source_url = funds_info['detailed'][0]['source_url']
+        
+        if not source_url or source_url not in self.allowed_sources:
+            source_url = self.knowledge_base.get_official_source_url('general')
+        
+        return {
+            'answer': answer,
+            'source_url': source_url,
+            'topic': topic
+        }
+    
     def is_valid_question(self, query: str) -> bool:
         """Check if query is about supported topics."""
+        query_lower = query.lower()
+        
+        # Check for fund listing queries
+        if any(keyword in query_lower for keyword in ['what fund', 'list fund', 'fund information', 'which fund', 'funds do you have', 'tell me about fund', 'fund']):
+            return True
+        
         supported_topics = [
             'expense ratio', 'exit load', 'minimum sip', 'sip',
             'lock-in', 'lock in', 'elss', 'riskometer', 'risk',
             'benchmark', 'statement', 'download'
         ]
         
-        query_lower = query.lower()
         return any(topic in query_lower for topic in supported_topics)
     
     def has_data_for_query(self, query: str) -> bool:
         """Check if we have data to answer this query."""
         topic = self.identify_topic(query)
+        
+        # Fund list queries are always answerable if we have any funds
+        if topic in ['fund_list', 'fund_list_with_ranks']:
+            return len(self.repository.get_all_funds()) > 0
+        
         fund_name = self.extract_fund_name(query)
         info = self.knowledge_base.get_info_by_topic(topic, fund_name)
         
