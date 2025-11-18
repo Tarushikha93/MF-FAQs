@@ -20,7 +20,7 @@
     },
     {
       "question": "What is the Expense ratio in a Mutual Fund?",
-      "answer": "The Expense Ratio is the annual fee a mutual fund charges investors to cover management and operational expenses. It is calculated as a percentage of total annual expenses divided by the average AUM (Assets under Management). For example, an expense ratio of 1.5% means that Rs 1.5 is charged annually for every Rs 100 invested.",
+      "answer": "The Expense Ratio is the annual fee a mutual fund charges investors to cover management and operational expenses, calculated as a percentage of total annual expenses divided by average AUM. For example, an expense ratio of 1.5% means that Rs 1.5 is charged annually for every Rs 100 invested. Do you want me to provide the expense ratio of the 3 funds? Select the right option and let us test with an example.",
       "source_url": "https://www.indmoney.com/mutual-funds"
     },
     {
