@@ -40,7 +40,7 @@ def chat():
         
         return jsonify({
             'answer': response['answer'],
-            'source_url': response.get('source_url'),
+            'source_url': response.get('source'),
             'error': None
         }), 200
         
