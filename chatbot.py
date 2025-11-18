@@ -310,6 +310,16 @@ Answer:"""
         if topic == 'fund_list' or topic == 'fund_list_with_ranks':
             return self._answer_fund_list_query(query, topic)
         
+        # First check if this is a general FAQ query
+        faq_result = self.knowledge_base.search_faq(query)
+        if faq_result:
+            return {
+                'answer': faq_result['answer'],
+                'source': faq_result.get('source_url', 'INDmoney'),
+                'topic': 'general',
+                'fund': None
+            }
+        
         # Extract fund name if present
         fund_name = self.extract_fund_name(query)
         

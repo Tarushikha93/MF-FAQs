@@ -6,6 +6,7 @@ Stores information about expense ratio, exit load, minimum SIP, lock-in, riskome
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
+import json
 
 
 @dataclass
@@ -29,12 +30,14 @@ class MutualFundKnowledgeBase:
     
     def __init__(self):
         self.funds: Dict[str, FundInfo] = {}
+        self.faqs: List[Dict[str, str]] = []
         self.official_sources = {
             'amfi': 'https://www.amfiindia.com',
             'sebi': 'https://www.sebi.gov.in',
             'amfi_nav': 'https://www.amfiindia.com/nav-history-download',
             'amfi_scheme_info': 'https://www.amfiindia.com/scheme-information'
         }
+        self.load_faq_data()
     
     def add_fund_info(self, fund_info: FundInfo):
         """Add or update fund information."""
@@ -53,6 +56,61 @@ class MutualFundKnowledgeBase:
                 results.append(fund)
         
         return results
+    
+    def load_faq_data(self):
+        """Load FAQ data from JSON file."""
+        try:
+            with open('indmoney_faq_data.json', 'r', encoding='utf-8') as f:
+                faq_data = json.load(f)
+                self.faqs = faq_data.get('faqs', [])
+                print(f"Loaded {len(self.faqs)} FAQs from indmoney_faq_data.json")
+        except FileNotFoundError:
+            print("FAQ data file not found. Using empty FAQ list.")
+            self.faqs = []
+        except Exception as e:
+            print(f"Error loading FAQ data: {e}")
+            self.faqs = []
+    
+    def search_faq(self, query: str) -> Optional[Dict[str, str]]:
+        """Search for FAQ matching the query."""
+        query_lower = query.lower()
+        
+        # Check for exact matches first
+        for faq in self.faqs:
+            if query_lower == faq['question'].lower():
+                return faq
+        
+        # Check for partial matches
+        for faq in self.faqs:
+            question_lower = faq['question'].lower()
+            # Check if query words are in the question
+            query_words = query_lower.split()
+            if len(query_words) > 0:
+                # If all query words appear in the question
+                if all(word in question_lower for word in query_words if len(word) > 2):
+                    return faq
+        
+        # Check for keyword matching
+        keywords = {
+            'expense ratio': ['expense ratio', 'expense', 'ratio', 'fees', 'charges'],
+            'nav': ['nav', 'net asset value', 'asset value'],
+            'sip': ['sip', 'systematic investment', 'systematic', 'investment plan'],
+            'exit load': ['exit load', 'exit', 'load', 'withdrawal', 'redemption'],
+            'aum': ['aum', 'assets under management', 'assets'],
+            'risk': ['risk', 'riskometer', 'risk level'],
+            'benchmark': ['benchmark', 'index', 'comparison'],
+            'tax': ['tax', 'taxation', 'capital gains', 'tax saving'],
+        }
+        
+        # Find matching keywords
+        for keyword, related_terms in keywords.items():
+            if keyword in query_lower:
+                for faq in self.faqs:
+                    question_lower = faq['question'].lower()
+                    if any(term in question_lower for term in related_terms):
+                        return faq
+        
+        return None
     
     def get_info_by_topic(self, topic: str, fund_name: str = None) -> Dict:
         """Get information about a specific topic."""

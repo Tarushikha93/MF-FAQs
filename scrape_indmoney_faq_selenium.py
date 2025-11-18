@@ -147,7 +147,7 @@ def scrape_indmoney_faq_improved():
                 if answer:
                     # Clean up the answer
                     answer = re.sub(r'\s+', ' ', answer)  # Remove extra whitespace
-                    answer = answer[:500]  # Limit length
+                    answer = answer[:2000]  # Limit length
                     
                     faqs.append({
                         "question": text,
