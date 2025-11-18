@@ -1,7 +1,7 @@
 // Use production API URL if available, otherwise use localhost for development
 const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:5001/api/chat'
-    : 'https://mf-faqs-backend-production.railway.app/api/chat'; // Update this URL after Railway deployment
+    : 'https://web-production-a563.up.railway.app/api/chat'; // Update this URL after Railway deployment
 
 const chatMessages = document.getElementById('chatMessages');
 const userInput = document.getElementById('userInput');
