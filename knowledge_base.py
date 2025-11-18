@@ -31,6 +31,8 @@ class MutualFundKnowledgeBase:
     def __init__(self):
         self.funds: Dict[str, FundInfo] = {}
         self.faqs: List[Dict[str, str]] = []
+        self.faq_refresh_info: str = ''
+        self.faq_source_url: str = 'https://www.indmoney.com/mutual-funds'
         self.official_sources = {
             'amfi': 'https://www.amfiindia.com',
             'sebi': 'https://www.sebi.gov.in',
@@ -63,13 +65,21 @@ class MutualFundKnowledgeBase:
             with open('indmoney_faq_data.json', 'r', encoding='utf-8') as f:
                 faq_data = json.load(f)
                 self.faqs = faq_data.get('faqs', [])
+                self.faq_refresh_info = faq_data.get('refresh_info', '')
+                self.faq_source_url = faq_data.get('source_url', 'https://www.indmoney.com/mutual-funds')
                 print(f"Loaded {len(self.faqs)} FAQs from indmoney_faq_data.json")
+                if self.faq_refresh_info:
+                    print(f"FAQ refresh info: {self.faq_refresh_info}")
         except FileNotFoundError:
             print("FAQ data file not found. Using empty FAQ list.")
             self.faqs = []
+            self.faq_refresh_info = ''
+            self.faq_source_url = 'https://www.indmoney.com/mutual-funds'
         except Exception as e:
             print(f"Error loading FAQ data: {e}")
             self.faqs = []
+            self.faq_refresh_info = ''
+            self.faq_source_url = 'https://www.indmoney.com/mutual-funds'
     
     def search_faq(self, query: str) -> Optional[Dict[str, str]]:
         """Search for FAQ matching the query."""

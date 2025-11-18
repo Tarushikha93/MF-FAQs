@@ -313,8 +313,13 @@ Answer:"""
         # First check if this is a general FAQ query
         faq_result = self.knowledge_base.search_faq(query)
         if faq_result:
+            answer = faq_result['answer']
+            # Add refresh timestamp if available
+            if hasattr(self.knowledge_base, 'faq_refresh_info') and self.knowledge_base.faq_refresh_info:
+                answer += f"\n\n{self.knowledge_base.faq_refresh_info}"
+            
             return {
-                'answer': faq_result['answer'],
+                'answer': answer,
                 'source': faq_result.get('source_url', 'INDmoney'),
                 'topic': 'general',
                 'fund': None
