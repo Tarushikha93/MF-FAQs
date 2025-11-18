@@ -8,7 +8,7 @@
       "minimum_sip": "100",
       "lock_in": "No Lock-in",
       "riskometer": "Very High Risk",
-      "benchmark": "and category average",
+      "benchmark": "Nifty LargeMidcap 250 TR INR",
       "source_url": "https://www.indmoney.com/mutual-funds/hdfc-large-and-mid-cap-fund-direct-growth-2874"
     },
     {
@@ -19,7 +19,7 @@
       "minimum_sip": "100",
       "lock_in": "No Lock-in",
       "riskometer": "Very High Risk",
-      "benchmark": "and category average",
+      "benchmark": "Nifty LargeMidcap 250 TR INR",
       "source_url": "https://www.indmoney.com/mutual-funds/hdfc-flexi-cap-fund-direct-plan-growth-option-3184"
     },
     {
@@ -30,7 +30,7 @@
       "minimum_sip": "500",
       "lock_in": "3 years",
       "riskometer": "Very High Risk",
-      "benchmark": "and category average",
+      "benchmark": "Nifty LargeMidcap 250 TR INR",
       "source_url": "https://www.indmoney.com/mutual-funds/hdfc-elss-taxsaver-direct-plan-growth-option-2685"
     }
   ]
