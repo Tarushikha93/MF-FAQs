@@ -6,6 +6,7 @@ This document describes the backend architecture for storing and managing mutual
 
 #Data scrapped from :
 https://www.indmoney.com/mutual-funds
+
 https://www.indmoney.com/mutual-funds/hdfc-elss-taxsaver-direct-plan-growth-option-2685
 https://www.indmoney.com/mutual-funds/hdfc-flexi-cap-fund-direct-plan-growth-option-3184
 https://www.indmoney.com/mutual-funds/hdfc-large-and-mid-cap-fund-direct-growth-2874
