@@ -23,7 +23,12 @@ except ImportError:
 try:
     from openai import OpenAI
     OPENAI_AVAILABLE = True
-except ImportError:
+    print("OpenAI library is available")
+except ImportError as e:
+    print(f"OpenAI library not available: {e}")
+    OPENAI_AVAILABLE = False
+except Exception as e:
+    print(f"Error importing OpenAI: {e}")
     OPENAI_AVAILABLE = False
 
 # Try to import Google Gemini, but make it optional
@@ -52,7 +57,14 @@ class MutualFundChatbot:
         if OPENAI_AVAILABLE:
             api_key = os.getenv('OPENAI_API_KEY')
             if api_key:
-                self.openai_client = OpenAI(api_key=api_key)
+                try:
+                    self.openai_client = OpenAI(api_key=api_key)
+                    print("OpenAI client initialized successfully")
+                except Exception as e:
+                    print(f"Failed to initialize OpenAI client: {e}")
+                    self.openai_client = None
+            else:
+                self.openai_client = None
         
         # Initialize Gemini if available
         if GEMINI_AVAILABLE:
