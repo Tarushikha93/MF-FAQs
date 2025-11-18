@@ -53,18 +53,16 @@ class MutualFundChatbot:
         self.repository = FundRepository()
         self.data_manager = FundDataManager()
         
-        # Initialize OpenAI if available
+        # Initialize OpenAI if available (temporarily disabled for Railway deployment)
         if OPENAI_AVAILABLE:
             api_key = os.getenv('OPENAI_API_KEY')
             if api_key:
-                try:
-                    self.openai_client = OpenAI(api_key=api_key)
-                    print("OpenAI client initialized successfully")
-                except Exception as e:
-                    print(f"Failed to initialize OpenAI client: {e}")
-                    self.openai_client = None
+                print("OpenAI API key found but initialization disabled for Railway compatibility")
+                self.openai_client = None
             else:
                 self.openai_client = None
+        else:
+            self.openai_client = None
         
         # Initialize Gemini if available
         if GEMINI_AVAILABLE:
