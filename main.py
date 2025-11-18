@@ -11,10 +11,19 @@ def print_welcome():
     print("=" * 60)
     print("Mutual Fund Information Chatbot")
     print("=" * 60)
-    print("\nAsk questions about expense ratio, exit load, SIP, lock-in, riskometer, benchmark, and statements about the funds in HDFC : Large & Mid Cap, Flexi and ELSS tax saver.")
-    print("I can also answer FAQs related to Mutual Funds.")
+    print("\nAsk questions about mutual funds including:")
+    print("• Expense ratio")
+    print("• Exit load")
+    print("• SIP (Systematic Investment Plan)")
+    print("• Lock-in period")
+    print("• Riskometer")
+    print("• Benchmark")
+    print("• How to download statements")
+    print("\nI provide answers from INDmoney FAQs with:")
+    print("• Compressed answers (3 sentences or less)")
+    print("• Refresh timestamps")
+    print("• Source links")
     print("\nNote: I provide factual information only, not investment advice.")
-    print("Every answer includes a source link to official pages.")
     print("\nType 'quit' or 'exit' to end the conversation.")
     print("=" * 60)
     print()
@@ -24,6 +33,10 @@ def main():
     """Main CLI loop."""
     chatbot = MutualFundChatbot()
     print_welcome()
+    
+    print(f"Loaded {len(chatbot.knowledge_base.faqs)} FAQs from knowledge base")
+    if chatbot.knowledge_base.faq_refresh_info:
+        print(f"FAQ data: {chatbot.knowledge_base.faq_refresh_info}")
     
     while True:
         try:
@@ -36,19 +49,12 @@ def main():
                 print("\nThank you for using the Mutual Fund Chatbot. Goodbye!")
                 break
             
-            # Check if question is valid
-            if not chatbot.is_valid_question(query):
-                print("\nBot: I can only answer questions about expense ratio, exit load, minimum SIP, "
-                      "lock-in period (ELSS), riskometer, benchmark, and statement downloads. "
-                      "Please ask about one of these topics.")
-                continue
-            
             # Get answer
             response = chatbot.answer_question(query)
             
             # Display answer
             print(f"\nBot: {response['answer']}")
-            if response['source_url']:
+            if response.get('source_url'):
                 print(f"\nSource: {response['source_url']}")
             
         except KeyboardInterrupt:
